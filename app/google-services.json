@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "327867816183",
+    "firebase_url": "https://projektwarships-default-rtdb.firebaseio.com",
+    "project_id": "projektwarships",
+    "storage_bucket": "projektwarships.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:327867816183:android:ba764ce037b00a17f25bf2",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTp-7UJCsE23j7eN4YNcqInqNR0sDVs7o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
