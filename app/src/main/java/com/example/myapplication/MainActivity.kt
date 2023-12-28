@@ -18,10 +18,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.ui.theme.MyApplicationTheme
+
+var Player = 0;
+var Opponent = 0;
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,13 +58,44 @@ fun ScreenNavigation() {
         startDestination = "screen1"
     ) {
         composable("screen1") {
-            WarshipsGame()
+            PlayerSelector(navController)
         }
         composable("screen2") {
-
+            WarshipsGame()
         }
     }
 }
+
+@Composable
+fun PlayerSelector(navController: NavController) {
+Column {
+    Button(
+        onClick = {
+            navController.navigate("screen2")
+            Player = 1
+            Opponent = 2 },
+        modifier = Modifier
+            .width(250.dp)
+            .height(100.dp)
+            .padding(16.dp)
+    ) {
+        Text(text = "Choose Player 1")
+    }
+    Button(
+        onClick = {navController.navigate("screen2")
+            Player = 2
+            Opponent = 1 },
+        modifier = Modifier
+            .width(250.dp)
+            .height(100.dp)
+            .padding(16.dp)
+    ) {
+        Text(text = "Choose Player 2")
+    }
+}
+
+
+    }
 
 @Composable
 fun WarshipsGame() {
@@ -110,7 +145,7 @@ fun WarshipsGame() {
                 .height(100.dp)
                 .padding(16.dp)
         ) {
-            Text(text = if (placingShip) "Stop Placing Ships" else "Place Ships")
+            Text(text = if (placingShip) "Player $Player" else "Opponent $Opponent")
         }
     }
 }
