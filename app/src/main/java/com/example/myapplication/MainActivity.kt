@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.example.myapplication
 
 import android.os.Bundle
@@ -7,7 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.*
@@ -23,6 +24,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.ui.theme.MyApplicationTheme
+import java.util.logging.Logger.global
 
 var Player = 0;
 var Opponent = 0;
@@ -55,12 +57,15 @@ fun ScreenNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = "screen1"
+        startDestination = "PLAYER"
     ) {
-        composable("screen1") {
+        composable("PLAYER") {
             PlayerSelector(navController)
         }
-        composable("screen2") {
+        composable("PLACING") {
+            ShipPlacing(navController)
+        }
+        composable("GAME") {
             WarshipsGame()
         }
     }
@@ -71,7 +76,7 @@ fun PlayerSelector(navController: NavController) {
 Column {
     Button(
         onClick = {
-            navController.navigate("screen2")
+            navController.navigate("PLACING")
             Player = 1
             Opponent = 2 },
         modifier = Modifier
@@ -82,7 +87,7 @@ Column {
         Text(text = "Choose Player 1")
     }
     Button(
-        onClick = {navController.navigate("screen2")
+        onClick = {navController.navigate("PLACING")
             Player = 2
             Opponent = 1 },
         modifier = Modifier
@@ -96,6 +101,45 @@ Column {
 
 
     }
+
+
+@Composable
+fun ShipPlacing(navController: NavController) {
+    var PlayerShips by remember { mutableStateOf(List(10 * 10) { CellState.Empty }) }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        LazyColumn {
+            items(10) { row ->
+                Row {
+                    for (col in 0 until 10) {
+                        val index = row * 10 + col
+                        WarshipCell(PlayerShips[index]) {
+                                PlayerShips = PlayerShips.toMutableList().apply {
+                                    if (this[index] == CellState.Empty) {
+                                        this[index] = CellState.Ship
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+
+        Button(
+            onClick = {
+                navController.navigate("GAME")
+
+            },
+            modifier = Modifier
+                .width(250.dp)
+                .height(100.dp)
+                .padding(16.dp)
+        ) {
+            Text(text = "Finish ship placing")
+        }
+    }}
 
 @Composable
 fun WarshipsGame() {
