@@ -24,12 +24,18 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.ui.theme.MyApplicationTheme
+import com.google.firebase.database.FirebaseDatabase
 import java.util.logging.Logger.global
 
-var Player = 0;
-var Opponent = 0;
+var Player = ""
+var Opponent = ""
+val firebaseDatabase = FirebaseDatabase.getInstance()
+var PlayerShips = List(10 * 10) { CellState.Empty }
+var battlefield = List(10 * 10) { CellState.Empty }
 
 class MainActivity : ComponentActivity() {
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -73,39 +79,100 @@ fun ScreenNavigation() {
 
 @Composable
 fun PlayerSelector(navController: NavController) {
-Column {
-    Button(
-        onClick = {
-            navController.navigate("PLACING")
-            Player = 1
-            Opponent = 2 },
-        modifier = Modifier
-            .width(250.dp)
-            .height(100.dp)
-            .padding(16.dp)
-    ) {
-        Text(text = "Choose Player 1")
-    }
-    Button(
-        onClick = {navController.navigate("PLACING")
-            Player = 2
-            Opponent = 1 },
-        modifier = Modifier
-            .width(250.dp)
-            .height(100.dp)
-            .padding(16.dp)
-    ) {
-        Text(text = "Choose Player 2")
+    val databaseReference = firebaseDatabase.reference
+
+
+    Column {
+        Button(
+            onClick = {
+                // Download PlayerShips from Firebase
+                databaseReference.child("players").child("Player1").get().addOnSuccessListener {
+                    val playerShipsFromFirebase = it.child("PlayerShips").value
+                    // Update PlayerShips with the downloaded data
+                    // Note: You need to implement a proper mapping based on your database structure
+                    // For example, assuming your data is a list of strings, you can convert it to CellState
+                    PlayerShips = (playerShipsFromFirebase as List<String>).map {
+                        when (it) {
+                            "Empty" -> CellState.Empty
+                            "EmptyHit" -> CellState.EmptyHit
+                            "Ship" -> CellState.Ship
+                            "ShipHit" -> CellState.ShipHit
+                            else -> CellState.Empty
+                        }
+                    }
+                }
+
+                // Reset battlefield to empty
+                battlefield = List(10 * 10) { CellState.Empty }
+
+                navController.navigate("PLACING")
+                Player = "Player1"
+                Opponent = "Player2"
+            },
+            modifier = Modifier
+                .width(250.dp)
+                .height(100.dp)
+                .padding(16.dp)
+        ) {
+            Text(text = "Choose Player 1")
+        }
+
+        Button(
+            onClick = {
+                // Download PlayerShips from Firebase
+                databaseReference.child("players").child("Player2").get().addOnSuccessListener {
+                    val playerShipsFromFirebase = it.child("PlayerShips").value
+                    // Update PlayerShips with the downloaded data
+                    // Note: You need to implement a proper mapping based on your database structure
+                    // For example, assuming your data is a list of strings, you can convert it to CellState
+                    PlayerShips = (playerShipsFromFirebase as List<String>).map {
+                        when (it) {
+                            "Empty" -> CellState.Empty
+                            "EmptyHit" -> CellState.EmptyHit
+                            "Ship" -> CellState.Ship
+                            "ShipHit" -> CellState.ShipHit
+                            else -> CellState.Empty
+                        }
+                    }
+                }
+                navController.navigate("PLACING")
+                Player = "Player2"
+                Opponent = "Player1"
+            },
+            modifier = Modifier
+                .width(250.dp)
+                .height(100.dp)
+                .padding(16.dp)
+        ) {
+            Text(text = "Choose Player 2")
+        }
+
+        Button(
+            onClick = {
+                // Reset both PlayerShips and battlefield to empty
+                // Upload the empty lists to Firebase
+                PlayerShips = List(10 * 10) { CellState.Empty }
+                battlefield = List(10 * 10) { CellState.Empty }
+                databaseReference.child("players").child("Player1").child("battlefield").setValue(PlayerShips)
+                databaseReference.child("players").child("Player2").child("battlefield").setValue(PlayerShips)
+                databaseReference.child("players").child("Player1").child("PlayerShips").setValue(PlayerShips)
+                databaseReference.child("players").child("Player2").child("PlayerShips").setValue(PlayerShips)
+            },
+            modifier = Modifier
+                .width(250.dp)
+                .height(100.dp)
+                .padding(16.dp)
+        ) {
+            Text(text = "Reset Gameplay")
+        }
     }
 }
 
 
-    }
-
 
 @Composable
 fun ShipPlacing(navController: NavController) {
-    var PlayerShips by remember { mutableStateOf(List(10 * 10) { CellState.Empty }) }
+    val databaseReference = firebaseDatabase.reference
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -120,6 +187,7 @@ fun ShipPlacing(navController: NavController) {
                                         this[index] = CellState.Ship
                                     }
                                 }
+                            databaseReference.child("players").child(Player).child("PlayerShips").setValue(PlayerShips)
                             }
                         }
                     }
@@ -144,7 +212,6 @@ fun ShipPlacing(navController: NavController) {
 @Composable
 fun WarshipsGame() {
     var placingShip by remember { mutableStateOf(false) }
-    var cells by remember { mutableStateOf(List(10 * 10) { CellState.Empty }) }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
@@ -155,16 +222,16 @@ fun WarshipsGame() {
                 Row {
                     for (col in 0 until 10) {
                         val index = row * 10 + col
-                        WarshipCell(cells[index]) {
+                        WarshipCell(battlefield[index]) {
                             if (placingShip) {
                                 // Place a ship in the selected cell
-                                cells = cells.toMutableList().apply {
+                                battlefield = battlefield.toMutableList().apply {
                                     if (this[index] == CellState.Empty) {
                                         this[index] = CellState.Ship
                                     }
                                 }
                             } else {
-                                cells = cells.toMutableList().apply {
+                                battlefield = battlefield.toMutableList().apply {
                                     if (this[index] == CellState.Ship) {
                                         this[index] = CellState.ShipHit
                                     } else if (this[index] == CellState.Empty) {
