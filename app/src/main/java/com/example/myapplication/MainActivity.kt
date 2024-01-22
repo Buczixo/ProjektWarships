@@ -339,7 +339,7 @@ fun WarshipsGame(navController: NavController) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
+        Text("$Player")
 
         LazyColumn {
             items(10) { row ->
