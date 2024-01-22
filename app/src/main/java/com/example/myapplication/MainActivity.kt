@@ -5,6 +5,7 @@ package com.example.myapplication
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
@@ -36,7 +38,10 @@ val databaseReference = firebaseDatabase.reference
 
 var Player = ""
 var Opponent = ""
-var Turn = ""
+var Turn = "Player1"
+var PlayerShipCount = 0
+var EnemyHit = 0
+var PlayerHit = 0
 var PlayerShips = List(10 * 10) { CellState.Empty }
 var Battlefield = List(10 * 10) { CellState.Empty }
 
@@ -80,7 +85,13 @@ fun ScreenNavigation() {
             ShipPlacing(navController)
         }
         composable("GAME") {
-            WarshipsGame()
+            WarshipsGame(navController)
+        }
+        composable("WIN"){
+            YouWinScreen(navController)
+        }
+        composable("LOOSE"){
+            YouLooseScreen(navController)
         }
     }
 }
@@ -114,8 +125,8 @@ fun DataDownload(player: String) {
     databaseReference.child("Warships").child(player).child("battlefield")
         .addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val ShipsFromFirebase = snapshot.value
-                Battlefield = (ShipsFromFirebase as List<*>).map {
+                val BattleFromFirebase = snapshot.value
+                Battlefield = (BattleFromFirebase as List<*>).map {
                     when (it) {
                         "Empty" -> CellState.Empty
                         "EmptyHit" -> CellState.EmptyHit
@@ -137,7 +148,48 @@ fun DataDownload(player: String) {
                 val FirebaseTurn = snapshot.value
                 Turn = FirebaseTurn.toString()
 
-                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                TODO("Not yet implemented")
+            }
+        })
+
+    databaseReference.child("Warships").child("Game").child(player)
+        .addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                PlayerShipCount = snapshot.value.toString().toInt()
+
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                TODO("Not yet implemented")
+            }
+        })
+
+    databaseReference.child("Warships").child("Game").child(player+"hit")
+        .addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+               PlayerHit = snapshot.value.toString().toInt()
+
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                TODO("Not yet implemented")
+            }
+        })
+    var opponent = ""
+    if(player == "Player1"){
+        opponent = "Player2"
+    }else{
+        opponent = "Player1"
+    }
+    databaseReference.child("Warships").child("Game").child(opponent+"hit")
+        .addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                EnemyHit = snapshot.value.toString().toInt()
+
+            }
 
             override fun onCancelled(error: DatabaseError) {
                 TODO("Not yet implemented")
@@ -189,8 +241,10 @@ fun PlayerSelector(navController: NavController) {
                 databaseReference.child("Warships").child("Player1").child("PlayerShips").setValue(Reset)
                 databaseReference.child("Warships").child("Player2").child("PlayerShips").setValue(Reset)
 
-                databaseReference.child("Warships").child("Game").child("Player1Ships").setValue(0)
-                databaseReference.child("Warships").child("Game").child("Player2Ships").setValue(0)
+                databaseReference.child("Warships").child("Game").child("Player1").setValue(0)
+                databaseReference.child("Warships").child("Game").child("Player2").setValue(0)
+                databaseReference.child("Warships").child("Game").child("Player1hit").setValue(0)
+                databaseReference.child("Warships").child("Game").child("Player2hit").setValue(0)
                 databaseReference.child("Warships").child("Game").child("Turn").setValue("Player1")
             },
             modifier = Modifier
@@ -209,12 +263,16 @@ fun PlayerSelector(navController: NavController) {
 
 @Composable
 fun ShipPlacing(navController: NavController) {
-    var playerShips by remember { mutableStateOf(List(100) { CellState.Empty }) }
-    playerShips = PlayerShips
+    var playerShips by remember { mutableStateOf(PlayerShips) }
+    var visi by remember { mutableIntStateOf(0) }
+    var playerShipCountLocal by remember { mutableIntStateOf(0) }
+    playerShipCountLocal = PlayerShipCount
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Text("$Player")
+
 
         LazyColumn {
             items(10) { row ->
@@ -224,60 +282,103 @@ fun ShipPlacing(navController: NavController) {
                         Box {
                             PlaceCell(playerShips[index]) {
                                 playerShips = playerShips.toMutableList().apply {
-                                    if(this[index] == CellState.Empty) {
+                                    if(this[index] == CellState.Empty && playerShipCountLocal < 20) {
                                         this[index] = CellState.Ship
+                                        playerShipCountLocal++
+                                        PlayerShipCount = playerShipCountLocal
                                     }
                                 }
                                 dataInput(Player, "PlayerShips").setValue(playerShips)
                                 dataInput(Opponent, "battlefield").setValue(playerShips)
-
+                                dataInput("Game", Player).setValue(playerShipCountLocal)
+                                visi++
                             }
-                        }
                         }
                     }
                 }
             }
+        }
 
+        if(PlayerShipCount == 20) {
+            visi ++
+            Button(
+                onClick = {
+                    navController.navigate("GAME")
+                },
+                modifier = Modifier
+                    .width(250.dp)
+                    .height(100.dp)
+                    .padding(16.dp)
+            ) {
+                Text(text = "Placed $playerShipCountLocal ships ! Finish ship placing")
+            }
+        }else{
+            visi++
+            Button(
+                onClick = {
+                },
+                modifier = Modifier
 
-        Button(
-            onClick = {
-                navController.navigate("GAME")
-
-            },
-            modifier = Modifier
-                .width(250.dp)
-                .height(100.dp)
-                .padding(16.dp)
-        ) {
-            Text(text = "Finish ship placing")
+                    .width(250.dp)
+                    .height(100.dp)
+                    .padding(16.dp)
+            ) {
+                Text(text = "You have ${(20 - playerShipCountLocal)} ships left to place !")
+            }
         }
     }}
 
 @Composable
-fun WarshipsGame() {
-    var battlefield by remember { mutableStateOf(List(100) { CellState.Empty }) }
-    battlefield = Battlefield
-    var turn by remember { mutableStateOf("")}
-    turn = Turn
+fun WarshipsGame(navController: NavController) {
+    var battlefield by remember { mutableStateOf(Battlefield) }
+    var turn by remember { mutableStateOf(Turn)}
+    var player by remember { mutableStateOf(Player)}
+    var visi by remember { mutableIntStateOf(0) }
+    var hit by remember { mutableIntStateOf(PlayerHit) }
+    var Ehit by remember { mutableIntStateOf(EnemyHit) }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
+
         LazyColumn {
             items(10) { row ->
                 Row {
                     for (col in 0 until 10) {
                         val index = row * 10 + col
                         GameCell(battlefield[index]) {
-                                // Place a ship in the selected cell
+                            // Place a ship in the selected cell
                             battlefield = battlefield.toMutableList().apply {
+                                if(hit < 20) {
                                     if (this[index] == CellState.Ship) {
-                                        this[index] = CellState.ShipHit
+                                        if(Turn == player){
+                                            this[index] = CellState.ShipHit
+                                            Turn = Opponent
+                                            hit++
+                                        }
                                     } else if (this[index] == CellState.Empty) {
-                                        this[index] = CellState.EmptyHit
+                                        if(Turn == player) {
+                                            this[index] = CellState.EmptyHit
+                                            Turn = Opponent
+                                        }
                                     }
-
+                                    visi++
+                                    PlayerHit = hit
+                                    turn = Turn
                                 }
+                            }
                             dataInput(Player, "battlefield").setValue(battlefield)
+                            dataInput("Game", player+"hit").setValue(hit)
+                            dataInput("Game", "Turn").setValue(turn)
+
+                            if(hit == 20){
+                                navController.navigate("WIN")
+                            }
+                            if(EnemyHit == 20){
+                                navController.navigate("LOOSE")
+                            }
+                            visi++
+
                         }
                     }
                 }
@@ -287,26 +388,37 @@ fun WarshipsGame() {
         Button(
             onClick = {},
             modifier = Modifier
-                .width(250.dp)
-                .height(100.dp)
+                .width(400.dp)
+                .height(200.dp)
                 .padding(16.dp)
         ) {
-            Text(text = "Player $Player and Opponent $Opponent")
+            Text(text = "Turn of $Turn\nYou have ${20- EnemyHit} ships left and you hit $hit")
+            visi++
+
         }
     }
 }
 
 @Composable
 fun PlaceCell(state: CellState, onClick: () -> Unit) {
+
     Box(
         modifier = Modifier
-            .size(20.dp)
+            .size(35.dp)
             .padding(2.dp)
             .clip(CircleShape.copy(all = CornerSize(4.dp)))
             .background(placeCellColor(state))
             .clickable(onClick = onClick)
-    ) {}
+    ) {
+        Image(
+            painter = painterResource(placeCellGraphics(state)),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+        )
+    }
 }
+
 
 @Composable
 fun placeCellColor(state: CellState): Color {
@@ -319,15 +431,32 @@ fun placeCellColor(state: CellState): Color {
 }
 
 @Composable
+fun placeCellGraphics(state: CellState): Int {
+    return when (state) {
+        CellState.Ship -> R.drawable.ship
+        CellState.ShipHit -> R.drawable.hit
+        CellState.Empty -> R.drawable.empty
+        CellState.EmptyHit -> R.drawable.emptyhit
+    }
+}
+
+@Composable
 fun GameCell(state: CellState, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(20.dp)
+            .size(35.dp)
             .padding(2.dp)
             .clip(CircleShape.copy(all = CornerSize(4.dp)))
             .background(GameCellColor(state))
             .clickable(onClick = onClick)
-    ) {}
+    ) {
+        Image(
+            painter = painterResource(GameCellGraphics(state)),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+        )
+    }
 }
 
 @Composable
@@ -340,9 +469,73 @@ fun GameCellColor(state: CellState): Color {
     }
 }
 
+@Composable
+fun GameCellGraphics(state: CellState): Int {
+    return when (state) {
+        CellState.Ship -> R.drawable.empty
+        CellState.ShipHit -> R.drawable.hit
+        CellState.Empty -> R.drawable.empty
+        CellState.EmptyHit -> R.drawable.emptyhit
+    }
+}
+
 enum class CellState {
     Empty,
     EmptyHit,
     Ship,
     ShipHit
+}
+
+@Composable
+fun YouWinScreen(navController: NavController) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Display a "You Win" message
+        Text(
+            text = "You Win!",
+            style = MaterialTheme.typography.displayLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Button(
+            onClick = { navController.navigate("PLAYER") },
+            modifier = Modifier
+                .padding(16.dp)
+        ) {
+            Text(text = "Play Again")
+        }
+
+    }
+}
+
+@Composable
+fun YouLooseScreen(navController: NavController) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Display a "You Win" message
+        Text(
+            text = "You Loose!",
+            style = MaterialTheme.typography.displayLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Button(
+            onClick = { navController.navigate("PLAYER") },
+            modifier = Modifier
+                .padding(16.dp)
+        ) {
+            Text(text = "Play Again")
+        }
+
+    }
 }
