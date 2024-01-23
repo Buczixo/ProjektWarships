@@ -201,6 +201,7 @@ fun DataDownload(player: String) {
 fun PlayerSelector(navController: NavController) {
 
     Column {
+        Text(text = "Maciej Buczak 268554 \n Miniprojekt końcowy - Gra w statki")
         Button(
             onClick = {
                 Player = "Player1"
